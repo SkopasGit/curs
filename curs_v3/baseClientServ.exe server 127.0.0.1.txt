@@ -1,0 +1,2 @@
+baseClientServ.exe server 127.0.0.1 54000
+baseClientServ.exe client 127.0.0.1 54000
