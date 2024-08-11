@@ -11,31 +11,39 @@ ChatServer::ChatServer(const char *ip, short port) : ChatBase(ip, port)
     InitializeSocket();
     BindAndListen();
 }
-bool ChatServer::ConfirmConctWithClient()
+void ChatServer::ConfirmConctWithClient()
 {
-    sockaddr_in clientInfo;
-    ZeroMemory(&clientInfo, sizeof(clientInfo));
-    int clientInfo_size = sizeof(clientInfo);
+    //  std::vector<std::thread> clientThreads;
 
-    ClientConn = accept(sock, (sockaddr *)&clientInfo, &clientInfo_size);
-    if (ClientConn == INVALID_SOCKET)
+    while (true)
     {
-        throw runtime_error("Client detected, but failed to connect to client. Error #" + to_string(WSAGetLastError()));
-        return false;
-    }
-    cout << "Connection with client successfully established" << endl;
+        sockaddr_in clientInfo;
+        ZeroMemory(&clientInfo, sizeof(clientInfo));
+        int clientInfo_size = sizeof(clientInfo);
 
-    char clientIP[22];
-    inet_ntop(AF_INET, &clientInfo.sin_addr, clientIP, INET_ADDRSTRLEN);
-    cout << "Client connected with IP address " << clientIP << endl;
-    return true;
+        SOCKET ClientConn = accept(sock, (sockaddr *)&clientInfo, &clientInfo_size);
+        if (ClientConn == INVALID_SOCKET)
+        {
+            throw runtime_error("Client detected, but failed to connect to client. Error #" + to_string(WSAGetLastError()));
+            continue;
+        }
+        cout << "Connection with client successfully established" << endl;
+        ChatServer::clientThreads.emplace_back(&ChatServer::Chat, this, ClientConn);
+        char clientIP[22];
+        inet_ntop(AF_INET, &clientInfo.sin_addr, clientIP, INET_ADDRSTRLEN);
+        cout << "Client connected with IP address " << clientIP << endl;
+    }
 }
 
-void ChatServer::Chat()
+void ChatServer::Chat(SOCKET ClientConn)
 {
+
     while (true)
     {
         int packetSize = ReceiveData(ClientConn, buffer);
+        if (packetSize < 0)
+            return;
+
         buffer[packetSize] = '\0'; // Null-terminate the string
         cout << "Client message: " << buffer.data() << endl;
 
@@ -56,7 +64,6 @@ void ChatServer::Run()
 {
 
     ConfirmConctWithClient();
-    Chat();
 }
 /////////////////////////////////////
 ChoiseTask::ChoiseTask(const char *ip, short port) : ChatServer(ip, port) {
@@ -65,8 +72,6 @@ ChoiseTask::ChoiseTask(const char *ip, short port) : ChatServer(ip, port) {
 void ChoiseTask::ParseUserData(const std::vector<char> &dataBufer)
 {
     std::string data(dataBufer.begin(), dataBufer.end());
-
-    // Створити строковий потік
     std::istringstream stream(data);
     std::string token;
     dataClientInt.clear();
@@ -140,9 +145,9 @@ void ChoiseTask::ParseUserData(const std::vector<char> &dataBufer)
         else if (std::isalpha(token[0]))
         {
             // Перевірка на символ
-           // dataClientChar.assign(token.begin(), token.end());
-           //  dataClientChar.push_back(token);
-           dataClientChar=dataBufer;
+            // dataClientChar.assign(token.begin(), token.end());
+            //  dataClientChar.push_back(token);
+            dataClientChar = dataBufer;
         }
         else
         {
@@ -160,7 +165,7 @@ void ChoiseTask::ParseUserData(const std::vector<char> &dataBufer)
         dataClientInt.clear();
     }
 }
-bool ChoiseTask::AnaliticAnswer(vector<char> &dataBuffer)
+bool ChoiseTask::AnaliticAnswer(SOCKET ClientConn, vector<char> &dataBuffer)
 {
     ParseUserData(dataBuffer);
 
@@ -172,122 +177,123 @@ bool ChoiseTask::AnaliticAnswer(vector<char> &dataBuffer)
     switch (dataClientInt[0])
     {
     case 1:
-        BaseFunctionOptions("Enter your Name", std::bind(&ChoiseTask::NameSurname, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter your Name", std::bind(&ChoiseTask::NameSurname, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 2:
-        BaseFunctionOptions("Enter two nubers for sum", std::bind(&ChoiseTask::SumOfNambers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter two nubers for sum", std::bind(&ChoiseTask::SumOfNambers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 3:
-        BaseFunctionOptions("Enter two nubers for mulitply", std::bind(&ChoiseTask::MultipyOfNambers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter two nubers for mulitply", std::bind(&ChoiseTask::MultipyOfNambers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 4:
-        BaseFunctionOptions("Enter array of numbers", std::bind(&ChoiseTask::MaxElementArray, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter array of numbers", std::bind(&ChoiseTask::MaxElementArray, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 5:
-        BaseFunctionOptions("Enter Number chek for poliadnder", std::bind(&ChoiseTask::MaxNubers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter Number chek for poliadnder", std::bind(&ChoiseTask::MaxNubers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 6:
-        BaseFunctionOptions("Enter Number chek for poliadnder", std::bind(&ChoiseTask::Poliander, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter Number chek for poliadnder", std::bind(&ChoiseTask::Poliander, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 7:
-        BaseFunctionOptions("Enter array of numbers", std::bind(&ChoiseTask::SortArrayUp, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter array of numbers", std::bind(&ChoiseTask::SortArrayUp, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
 
     case 8:
-        BaseFunctionOptions("Enter a string to count occurrences of 'a'", std::bind(&ChoiseTask::CountLetterA, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a string to count occurrences of 'a'", std::bind(&ChoiseTask::CountLetterA, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 9:
-        BaseFunctionOptions("Enter the length of the array to fill with zeros", std::bind(&ChoiseTask::SendZeros, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter the length of the array to fill with zeros", std::bind(&ChoiseTask::SendZeros, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 10:
-        BaseFunctionOptions("Enter a string to check for digits", std::bind(&ChoiseTask::CheckDigits, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a string to check for digits", std::bind(&ChoiseTask::CheckDigits, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 11:
-        BaseFunctionOptions("Enter a name to append to the given surname", std::bind(&ChoiseTask::AddName, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a name to append to the given surname", std::bind(&ChoiseTask::AddName, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 12:
-        BaseFunctionOptions("Enter numbers to calculate their sum", std::bind(&ChoiseTask::SumThreeNumbers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter numbers to calculate their sum", std::bind(&ChoiseTask::SumThreeNumbers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 13:
-        BaseFunctionOptions("Enter numbers to calculate the product of negative numbers", std::bind(&ChoiseTask::ProductNegativeNumbers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter numbers to calculate the product of negative numbers", std::bind(&ChoiseTask::ProductNegativeNumbers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 14:
-        BaseFunctionOptions("Enter an array of numbers to find min and max values", std::bind(&ChoiseTask::MinMaxElements, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter an array of numbers to find min and max values", std::bind(&ChoiseTask::MinMaxElements, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 15:
-        BaseFunctionOptions("Enter an array of numbers to add their average to each element", std::bind(&ChoiseTask::AddAverageToNumbers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter an array of numbers to add their average to each element", std::bind(&ChoiseTask::AddAverageToNumbers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 16:
-        BaseFunctionOptions("Enter a number to check if it's prime", std::bind(&ChoiseTask::CheckPrime, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a number to check if it's prime", std::bind(&ChoiseTask::CheckPrime, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 17:
-        BaseFunctionOptions("Enter an array of numbers to sort in descending order", std::bind(&ChoiseTask::SortArrayDescending, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter an array of numbers to sort in descending order", std::bind(&ChoiseTask::SortArrayDescending, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 18:
-        BaseFunctionOptions("Enter a string to count spaces", std::bind(&ChoiseTask::CountSpaces, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a string to count spaces", std::bind(&ChoiseTask::CountSpaces, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
-    case 19://///error
-        BaseFunctionOptions("Enter a string to check for spaces", std::bind(&ChoiseTask::SendXs, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    /*
+    case 19: /////error
+        BaseFunctionOptions(ClientConn, "Enter a string to check for spaces", std::bind(&ChoiseTask::SendXs, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 20:
-        BaseFunctionOptions("Enter a number to factorize", std::bind(&ChoiseTask::CheckSpaces, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a number to factorize", std::bind(&ChoiseTask::CheckSpaces, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 21:
-        BaseFunctionOptions("Enter a number to check if it's a perfect square", std::bind(&ChoiseTask::FactorizeNumber, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a number to check if it's a perfect square", std::bind(&ChoiseTask::FactorizeNumber, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 22:
-        BaseFunctionOptions("Enter numbers to replace negative values with zero", std::bind(&ChoiseTask::CheckPerfectSquare, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter numbers to replace negative values with zero", std::bind(&ChoiseTask::CheckPerfectSquare, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 23:
-        BaseFunctionOptions("Enter a string to count vowels", std::bind(&ChoiseTask::ReplaceNegativesWithZero, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a string to count vowels", std::bind(&ChoiseTask::ReplaceNegativesWithZero, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 24:
-        BaseFunctionOptions("Enter the length of the array to fill with random numbers", std::bind(&ChoiseTask::CountVowels, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter the length of the array to fill with random numbers", std::bind(&ChoiseTask::CountVowels, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 25:
-        BaseFunctionOptions("Enter a string to check for punctuation", std::bind(&ChoiseTask::SendRandomNumbers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a string to check for punctuation", std::bind(&ChoiseTask::SendRandomNumbers, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 26:
-        BaseFunctionOptions("Enter a number to calculate its factorial", std::bind(&ChoiseTask::CheckPunctuation, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a number to calculate its factorial", std::bind(&ChoiseTask::CheckPunctuation, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 27:
-        BaseFunctionOptions("Enter a string to convert to uppercase", std::bind(&ChoiseTask::FactorialOfNumber, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter a string to convert to uppercase", std::bind(&ChoiseTask::FactorialOfNumber, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 28:
-        BaseFunctionOptions("Enter numbers to sum and send the result", std::bind(&ChoiseTask::ConvertUppercase, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter numbers to sum and send the result", std::bind(&ChoiseTask::ConvertUppercase, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
         break;
     case 29:
-        BaseFunctionOptions("Enter array of numbers", std::bind(&ChoiseTask::SumAndSend, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        BaseFunctionOptions(ClientConn, "Enter array of numbers", std::bind(&ChoiseTask::SumAndSend, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
-        break;
+        break; */
 
     default:
         response = "Choise operation 1-30";
@@ -296,18 +302,20 @@ bool ChoiseTask::AnaliticAnswer(vector<char> &dataBuffer)
         return false;
     }
 }
-void ChoiseTask::Chat()
+void ChoiseTask::Chat(SOCKET ClientConn)
 {
     while (true)
     {
         std::fill(buffer.begin(), buffer.end(), '\0');
         int packetSize = ReceiveData(ClientConn, buffer);
+        if (packetSize < 0)
+            return;
         buffer[packetSize] = '\0'; // Null-terminate the string
 
         cout << "Client message: " << buffer.data() << endl;
         cout << "Your (host) message: ";
 
-        if (AnaliticAnswer(buffer))
+        if (AnaliticAnswer(ClientConn, buffer))
             continue;
 
         if (buffer.empty())
@@ -534,7 +542,6 @@ std::vector<char> ChoiseTask::SortArrayUp(const std::vector<char> &dataChar, con
     }
     std::vector<char> result(tmpstr.begin(), tmpstr.end());
     return result;
-    return result;
 }
 std::vector<char> ChoiseTask::CountLetterA(const std::vector<char> &dataChar, const std::vector<int> &dataInt, const std::vector<double> &dataDouble)
 {
@@ -542,16 +549,17 @@ std::vector<char> ChoiseTask::CountLetterA(const std::vector<char> &dataChar, co
     std::string result = std::to_string(count);
     return std::vector<char>(result.begin(), result.end());
 }
-//9?
+// 9?
 std::vector<char> ChoiseTask::SendZeros(const std::vector<char> &dataChar, const std::vector<int> &dataInt, const std::vector<double> &dataDouble)
 {
-    auto it = std::find(dataChar.begin(),dataChar.end(), '\0');
-    if (it != dataChar.end()) {
-       int length = std::distance(dataChar.begin(), it);
+    auto it = std::find(dataChar.begin(), dataChar.end(), '\0');
+    if (it != dataChar.end())
+    {
+        int length = std::distance(dataChar.begin(), it);
     }
     // Якщо '\0' не знайдено, повертаємо розмір вектора як позицію
-   int length= dataChar.size();
-    
+    int length = dataChar.size();
+
     return std::vector<char>(length, '0');
 }
 
@@ -566,12 +574,13 @@ std::vector<char> ChoiseTask::CheckDigits(const std::vector<char> &dataChar, con
 // перевірити
 std::vector<char> ChoiseTask::AddName(const std::vector<char> &dataChar, const std::vector<int> &dataInt, const std::vector<double> &dataDouble)
 {
-    auto it = std::find(dataChar.begin(),dataChar.end(), '\0');
-    if (it != dataChar.end()) {
-       int length = std::distance(dataChar.begin(), it);
+    auto it = std::find(dataChar.begin(), dataChar.end(), '\0');
+    if (it != dataChar.end())
+    {
+        int length = std::distance(dataChar.begin(), it);
     }
     // Якщо '\0' не знайдено, повертаємо розмір вектора як позицію
-   int length= dataChar.size();
+    int length = dataChar.size();
     std::string surname(dataChar.begin(), it);
     std::string fullName = surname + " Mykola";
     return std::vector<char>(fullName.begin(), fullName.end());
@@ -645,7 +654,7 @@ std::vector<char> ChoiseTask::MinMaxElements(const std::vector<char> &dataChar, 
 std::vector<char> ChoiseTask::AddAverageToNumbers(const std::vector<char> &dataChar, const std::vector<int> &dataInt, const std::vector<double> &dataDouble)
 {
     std::vector<double> tmpDouble;
-      std::string resultStr ;
+    std::string resultStr;
     if (!dataInt.empty() && dataInt.size() == 4)
     {
         tmpDouble.resize(dataInt.size(), 0);
@@ -674,7 +683,7 @@ std::vector<char> ChoiseTask::AddAverageToNumbers(const std::vector<char> &dataC
     }
     else
     {
-       resultStr = "No data";
+        resultStr = "No data";
         return std::vector<char>(resultStr.begin(), resultStr.end());
     }
 }
@@ -682,8 +691,8 @@ std::vector<char> ChoiseTask::AddAverageToNumbers(const std::vector<char> &dataC
 std::vector<char> ChoiseTask::CheckPrime(const std::vector<char> &dataChar, const std::vector<int> &dataInt, const std::vector<double> &dataDouble)
 {
     std::string result;
-    if(!dataInt.empty())
-        result=false;
+    if (!dataInt.empty())
+        result = false;
     int num = dataInt[0];
     bool isPrime = true;
     if (num <= 1)
@@ -699,7 +708,7 @@ std::vector<char> ChoiseTask::CheckPrime(const std::vector<char> &dataChar, cons
     result = isPrime ? "Yes" : "No";
     return std::vector<char>(result.begin(), result.end());
 }
-//17?
+// 17?
 std::vector<char> ChoiseTask::SortArrayDescending(const std::vector<char> &dataChar, const std::vector<int> &dataInt, const std::vector<double> &dataDouble)
 {
     std::vector<int> sortedData = dataInt;
@@ -731,7 +740,7 @@ std::vector<char> ChoiseTask::CheckSpaces(const std::vector<char> &dataChar, con
     std::string result = hasSpaces ? "Yes" : "No";
     return std::vector<char>(result.begin(), result.end());
 }
-
+/*
 std::vector<char> ChoiseTask::FactorizeNumber(const std::vector<char> &dataChar, const std::vector<int> &dataInt, const std::vector<double> &dataDouble)
 {
     int num = dataInt[0];
@@ -834,7 +843,7 @@ std::vector<char> ChoiseTask::SumAndSend(const std::vector<char> &dataChar, cons
     return result;
 }*/
 
-void ChoiseTask::BaseFunctionOptions(string queeryClient, const std::function<vector<char>(const std::vector<char> &, const std::vector<int> &, const std::vector<double> &)> &func)
+void ChoiseTask::BaseFunctionOptions(SOCKET ClientConn, string queeryClient, const std::function<vector<char>(const std::vector<char> &, const std::vector<int> &, const std::vector<double> &)> &func)
 {
     std::string response;
     vector<char> tmpbuffer(ChatBase::BUFF_SIZE);
