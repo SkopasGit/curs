@@ -1,5 +1,6 @@
 #include "ChatBase.h"
 
+
 ChatBase::ChatBase(const char* ip, short port)
     : buffer(BUFF_SIZE), IP_ADDRESS(ip), PORT_NUMBER(port) {
     WSADATA wsData;
@@ -10,9 +11,11 @@ ChatBase::ChatBase(const char* ip, short port)
     cout << "WinSock initialization successful" << endl;
 }
 
+
 ChatBase::~ChatBase() {
     WSACleanup();
 }
+
 
 void ChatBase::CloseConnection() {
     shutdown(sock, SD_BOTH);
@@ -26,6 +29,7 @@ void ChatBase::InitializeSocket() {
     }
     cout << "Socket initialization successful" << endl;
 }
+
 
 sockaddr_in ChatBase::InitializeSockAddr() {
     sockaddr_in servInfo;
@@ -43,6 +47,7 @@ sockaddr_in ChatBase::InitializeSockAddr() {
     return servInfo;
 }
 
+
 void ChatBase::ConnectToServer() {
     sockaddr_in servInfo = InitializeSockAddr();
 
@@ -52,6 +57,7 @@ void ChatBase::ConnectToServer() {
     }
     cout << "Connection successfully established. Ready to send message to server" << endl;
 }
+
 
 void ChatBase::BindAndListen() {
     sockaddr_in servInfo = InitializeSockAddr();
@@ -69,17 +75,23 @@ void ChatBase::BindAndListen() {
     cout << "Listening..." << endl;
 }
 
+
 int ChatBase::ReceiveData(SOCKET clientSock, vector<char>& recvBuffer) {
-    int packetSize = recv(clientSock, recvBuffer.data(), recvBuffer.size(), 0);
+    int packetSize =  recv(clientSock, recvBuffer.data(), recvBuffer.size(), 0);
     if (packetSize == SOCKET_ERROR) {
-        throw runtime_error("Failed to receive message. Error #" + to_string(WSAGetLastError()));
+        //throw runtime_error("Failed to receive message. Error #" + to_string(WSAGetLastError()));
+        std::cout<<"wrong reccive"<<std::endl;    
     }
     return packetSize;
 }
 
+
 void ChatBase::SendData(SOCKET clientSock, const vector<char>& sendBuffer) {
     int packetSize = send(clientSock, sendBuffer.data(), sendBuffer.size(), 0);
     if (packetSize == SOCKET_ERROR) {
-        throw runtime_error("Failed to send message. Error #" + to_string(WSAGetLastError()));
+       // throw runtime_error("Failed to send message. Error #" + to_string(WSAGetLastError()));
+       std::cout<<"wrong reccive"<<std::endl;    
+
     }
 }
+ 
