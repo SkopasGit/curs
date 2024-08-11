@@ -3,13 +3,16 @@
 
 #include "ChatBase.h"
 #include <functional>
+#include <thread>
 // Derived class for server chat
 class ChatServer : public ChatBase {
+private:
+std::vector<std::thread> clientThreads;
 
 protected:
-SOCKET ClientConn;
-bool  ConfirmConctWithClient();
-virtual void Chat();
+
+void ConfirmConctWithClient();
+virtual void Chat(SOCKET ClientConn);
 
 public:
     ChatServer(const char* ip, short port);
@@ -22,6 +25,8 @@ private:
 vector<int> dataClientInt;
 vector<char> dataClientChar;
 vector<double> dataClientDoble; 
+
+
 //task 1
 std::vector<char> NameSurname(const std::vector<char>&,const std::vector<int>&,const std::vector<double>&);
 //task2
@@ -60,12 +65,12 @@ std::vector<char> CountLetterA(const std::vector<char> &dataChar, const std::vec
     std::vector<char> SumAndSend(const std::vector<char> &dataChar, const std::vector<int> &dataInt, const std::vector<double> &dataDouble);
 void ParseUserData(const vector<char>& dataBufer);
 protected:
-void Chat() override;
+void Chat(SOCKET ClientConn) override;
 
-void BaseFunctionOptions(string queeryClient,const std::function<vector<char> (const std::vector<char>&,const std::vector<int>&,const std::vector<double>&)>& func);
+void BaseFunctionOptions(SOCKET ClientConn,string queeryClient,const std::function<vector<char> (const std::vector<char>&,const std::vector<int>&,const std::vector<double>&)>& func);
 
 
-bool AnaliticAnswer(vector<char>& dataBuffer);
+bool AnaliticAnswer(SOCKET ClientConn,vector<char>& dataBuffer);
     
 public:
      ChoiseTask(const char* ip, short port);
